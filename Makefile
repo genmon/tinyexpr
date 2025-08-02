@@ -4,7 +4,7 @@ LFLAGS = -lm
 
 .PHONY = all clean
 
-all: smoke smoke_pr repl bench example example2 example3
+all: smoke smoke_pr shader_test repl bench example example2 example3
 
 
 smoke: smoke.c tinyexpr.c
@@ -13,6 +13,10 @@ smoke: smoke.c tinyexpr.c
 
 smoke_pr: smoke.c tinyexpr.c
 	$(CC) $(CCFLAGS) -DTE_POW_FROM_RIGHT -DTE_NAT_LOG -o $@ $^ $(LFLAGS)
+	./$@
+
+shader_test: shader_test.c tinyexpr.c
+	$(CC) $(CCFLAGS) -o $@ $^ $(LFLAGS)
 	./$@
 
 repl: repl.o tinyexpr.o
@@ -40,4 +44,4 @@ repl-readline.o: repl.c
 	$(CC) -c $(CCFLAGS) $< -o $@
 
 clean:
-	rm -f *.o *.exe example example2 example3 bench repl smoke_pr smoke
+	rm -f *.o *.exe example example2 example3 bench repl smoke_pr smoke shader_test shader_reference

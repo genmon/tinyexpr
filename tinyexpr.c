@@ -56,7 +56,8 @@ typedef double (*te_fun2)(double, double);
 
 enum {
     TOK_NULL = TE_CLOSURE7+1, TOK_ERROR, TOK_END, TOK_SEP,
-    TOK_OPEN, TOK_CLOSE, TOK_NUMBER, TOK_VARIABLE, TOK_INFIX
+    TOK_OPEN, TOK_CLOSE, TOK_NUMBER, TOK_VARIABLE, TOK_INFIX,
+    TOK_TERNARY_COND, TOK_TERNARY_ELSE
 };
 
 
@@ -247,6 +248,7 @@ static double logical_not(double a) {return a == 0.0;}
 static double logical_notnot(double a) {return a != 0.0;}
 static double negate_logical_not(double a) {return -(a == 0.0);}
 static double negate_logical_notnot(double a) {return -(a != 0.0);}
+static double ternary(double a, double b, double c) {return a != 0.0 ? b : c;}
 
 
 void next_token(state *s) {
@@ -352,6 +354,8 @@ void next_token(state *s) {
                     case '(': s->type = TOK_OPEN; break;
                     case ')': s->type = TOK_CLOSE; break;
                     case ',': s->type = TOK_SEP; break;
+                    case '?': s->type = TOK_TERNARY_COND; break;
+                    case ':': s->type = TOK_TERNARY_ELSE; break;
                     case ' ': case '\t': case '\n': case '\r': break;
                     default: s->type = TOK_ERROR; break;
                 }
@@ -363,6 +367,7 @@ void next_token(state *s) {
 
 static te_expr *list(state *s);
 static te_expr *expr(state *s);
+static te_expr *ternary_expr(state *s);
 static te_expr *power(state *s);
 
 static te_expr *base(state *s) {
@@ -672,11 +677,18 @@ static te_expr *test_expr(state *s) {
 static te_expr *expr(state *s) {
     /* <expr>      =    <test_expr> {("&&" | "||") <test_expr>} */
     te_expr *ret = test_expr(s);
+    CHECK_NULL(ret);
 
     while (s->type == TOK_INFIX && (s->function == logical_and || s->function == logical_or)) {
         te_fun2 t = s->function;
         next_token(s);
-        ret = NEW_EXPR(TE_FUNCTION2 | TE_FLAG_PURE, ret, test_expr(s));
+        te_expr *te = test_expr(s);
+        CHECK_NULL(te, te_free(ret));
+
+        te_expr *prev = ret;
+        ret = NEW_EXPR(TE_FUNCTION2 | TE_FLAG_PURE, ret, te);
+        CHECK_NULL(ret, te_free(te), te_free(prev));
+
         ret->function = t;
     }
 
@@ -684,14 +696,46 @@ static te_expr *expr(state *s) {
 }
 
 
-static te_expr *list(state *s) {
-    /* <list>      =    <expr> {"," <expr>} */
+static te_expr *ternary_expr(state *s) {
+    /* <ternary>   =    <expr> ["?" <ternary> ":" <ternary>] */
     te_expr *ret = expr(s);
+    CHECK_NULL(ret);
+
+    if (s->type == TOK_TERNARY_COND) {
+        next_token(s);
+        te_expr *true_expr = ternary_expr(s);
+        CHECK_NULL(true_expr, te_free(ret));
+
+        if (s->type != TOK_TERNARY_ELSE) {
+            s->type = TOK_ERROR;
+            te_free(ret);
+            te_free(true_expr);
+            return NULL;
+        }
+
+        next_token(s);
+        te_expr *false_expr = ternary_expr(s);
+        CHECK_NULL(false_expr, te_free(ret), te_free(true_expr));
+
+        te_expr *prev = ret;
+        ret = NEW_EXPR(TE_FUNCTION3 | TE_FLAG_PURE, ret, true_expr, false_expr);
+        CHECK_NULL(ret, te_free(prev), te_free(true_expr), te_free(false_expr));
+
+        ret->function = ternary;
+    }
+
+    return ret;
+}
+
+
+static te_expr *list(state *s) {
+    /* <list>      =    <ternary> {"," <ternary>} */
+    te_expr *ret = ternary_expr(s);
     CHECK_NULL(ret);
 
     while (s->type == TOK_SEP) {
         next_token(s);
-        te_expr *e = expr(s);
+        te_expr *e = ternary_expr(s);
         CHECK_NULL(e, te_free(ret));
 
         te_expr *prev = ret;

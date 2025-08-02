@@ -174,7 +174,7 @@ void test_syntax() {
         {"1*2(+4", 4},
         {"1*2(1+4", 4},
         {"a+5", 1},
-        {"!+5", 1},
+        {"@+5", 1},
         {"_a+5", 1},
         {"#a+5", 1},
         {"1^^5", 3},
@@ -784,6 +784,42 @@ void test_logic() {
 }
 
 
+void test_ternary() {
+    test_case cases[] = {
+            {"1 ? 2 : 3", 2},
+            {"0 ? 2 : 3", 3},
+            {"1 ? 0 ? 4 : 5 : 3", 5},
+            {"0 ? 2 : 1 ? 4 : 5", 4},
+            {"2 > 1 ? 10 : 20", 10},
+            {"1 > 2 ? 10 : 20", 20},
+            {"5 ? 2+3 : 4*2", 5},
+            {"0 ? 2+3 : 4*2", 8},
+            {"1 && 1 ? 7 : 8", 7},
+            {"1 && 0 ? 7 : 8", 8},
+            {"3 == 3 ? 1 : 0", 1},
+            {"3 != 3 ? 1 : 0", 0},
+            {"(2 > 1) ? (3 + 4) : (5 * 6)", 7},
+            {"(1 > 2) ? (3 + 4) : (5 * 6)", 30},
+    };
+
+
+    int i;
+    for (i = 0; i < sizeof(cases) / sizeof(test_case); ++i) {
+        const char *expr = cases[i].expr;
+        const double answer = cases[i].answer;
+
+        int err;
+        const double ev = te_interp(expr, &err);
+        lok(!err);
+        lfequal(ev, answer);
+
+        if (err) {
+            printf("FAILED: %s (%d)\n", expr, err);
+        }
+    }
+}
+
+
 int main(int argc, char *argv[])
 {
     lrun("Results", test_results);
@@ -798,6 +834,7 @@ int main(int argc, char *argv[])
     lrun("Pow", test_pow);
     lrun("Combinatorics", test_combinatorics);
     lrun("Logic", test_logic);
+    lrun("Ternary", test_ternary);
     lresults();
 
     return lfails != 0;
