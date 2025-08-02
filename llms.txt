@@ -1,0 +1,285 @@
+# TinyExpr Expression Syntax Guide for LLMs
+
+This document describes the mathematical expression syntax that TinyExpr can parse and evaluate. Use this as a reference when generating expressions that will be processed by TinyExpr.
+
+## Supported Data Types
+
+- **Numbers**: Double-precision floating-point only
+- **Variables**: Named variables bound at evaluation time
+- **No strings, arrays, or complex data types**
+
+## Numeric Literals
+
+```
+1234          # Integer
+3.14159       # Decimal
+.5            # Leading decimal point (equivalent to 0.5)
+1e3           # Scientific notation (1000)
+1.5e-2        # Scientific notation (0.015)
+0x1A2F        # Hexadecimal (6703 in decimal)
+```
+
+**Limitations:**
+- No binary literals (0b prefix)
+- No octal literals with leading zero (010 is parsed as 10, not 8)
+
+## Variable Names
+
+```
+x             # Single letter
+velocity      # Multi-character
+angle_deg     # Underscores allowed
+x1            # Numbers allowed after letters
+PI            # Case sensitive (different from pi)
+```
+
+**Rules:**
+- Must start with a letter (a-z, A-Z)
+- Can contain letters, digits (0-9), and underscores
+- Case sensitive
+- No reserved keywords
+
+## Arithmetic Operators
+
+### Basic Operators
+```
+a + b         # Addition
+a - b         # Subtraction
+a * b         # Multiplication
+a / b         # Division
+a % b         # Modulus (remainder)
+a ^ b         # Exponentiation (NOT XOR)
+```
+
+### Unary Operators
+```
+-x            # Negation
++x            # Positive (identity)
+```
+
+### Precedence (highest to lowest)
+1. Unary `+`, `-`
+2. Exponentiation `^` (left-associative by default)
+3. Multiplication `*`, Division `/`, Modulus `%`
+4. Addition `+`, Subtraction `-`
+5. Comparison operators
+6. Logical operators
+7. Ternary operator
+8. Comma operator
+
+**Note:** Exponentiation can be configured as right-associative (`a^b^c = a^(b^c)`) in some builds.
+
+## Comparison Operators
+
+```
+a < b         # Less than
+a <= b        # Less than or equal
+a > b         # Greater than
+a >= b        # Greater than or equal
+a == b        # Equal (note: double equals)
+a != b        # Not equal
+```
+
+**Returns:** 1.0 for true, 0.0 for false
+
+## Logical Operators
+
+```
+a && b        # Logical AND
+a || b        # Logical OR
+!a            # Logical NOT
+```
+
+**Behavior:**
+- Any non-zero value is considered true
+- Zero is considered false
+- Returns 1.0 for true, 0.0 for false
+- Short-circuit evaluation (AND stops at first false, OR stops at first true)
+
+## Ternary Operator
+
+```
+condition ? true_expr : false_expr
+```
+
+**Examples:**
+```
+x > 0 ? x : -x                    # Absolute value
+x < min ? min : (x > max ? max : x)    # Clamp function
+a == 0 ? 1 : sin(a)/a             # Sinc function
+```
+
+**Behavior:**
+- Right-associative: `a ? b : c ? d : e` = `a ? b : (c ? d : e)`
+- Any non-zero condition is true
+
+## Built-in Mathematical Functions
+
+### Trigonometric Functions
+```
+sin(x)        # Sine (radians)
+cos(x)        # Cosine (radians)
+tan(x)        # Tangent (radians)
+asin(x)       # Arc sine
+acos(x)       # Arc cosine
+atan(x)       # Arc tangent
+atan2(y, x)   # Two-argument arc tangent
+sinh(x)       # Hyperbolic sine
+cosh(x)       # Hyperbolic cosine
+tanh(x)       # Hyperbolic tangent
+```
+
+### Exponential and Logarithmic Functions
+```
+exp(x)        # e^x
+ln(x)         # Natural logarithm
+log(x)        # Base-10 logarithm (configurable to natural log)
+log10(x)      # Base-10 logarithm
+pow(x, y)     # x^y (same as x^y operator)
+```
+
+### Other Mathematical Functions
+```
+sqrt(x)       # Square root
+abs(x)        # Absolute value (calls fabs internally)
+floor(x)      # Floor function
+ceil(x)       # Ceiling function
+```
+
+### Combinatorial Functions
+```
+fac(n)        # Factorial (n!)
+ncr(n, r)     # Combinations (n choose r)
+npr(n, r)     # Permutations (n permute r)
+```
+
+### Constants
+```
+pi            # π (3.14159...)
+e             # Euler's number (2.71828...)
+```
+
+## Expression Structure
+
+### Parentheses
+```
+(a + b) * c   # Grouping for precedence
+sin(x + y)    # Function arguments
+```
+
+### Comma Operator
+```
+a, b          # Evaluates both, returns b
+x = 5, y = 3, x + y   # Sequential evaluation, returns 8
+```
+
+**Note:** Primarily used for multiple expressions; returns the last value.
+
+## Limitations and Differences from Standard C
+
+### What TinyExpr CANNOT do:
+- **Bitwise operations**: No `&`, `|`, `^`, `<<`, `>>`, `~`
+- **Assignment**: No `=`, `+=`, `*=`, etc.
+- **Increment/decrement**: No `++`, `--`
+- **Arrays or pointers**: No `[]`, `*`, `&`
+- **Conditional compilation**: No `#ifdef`, etc.
+- **Control flow**: No `if`, `for`, `while`, `switch`
+- **Function definitions**: Only built-in functions available
+- **String operations**: No string literals or operations
+- **Type casting**: Everything is double-precision float
+- **Memory allocation**: No `malloc`, `free`, etc.
+- **I/O operations**: No `printf`, `scanf`, etc.
+
+### Key Differences from C:
+- **`^` is exponentiation**, not XOR bitwise operation
+- **`=` is not assignment**, use `==` for equality comparison
+- **No short-circuit evaluation** for arithmetic (but logical operators do short-circuit)
+- **All numbers are floating-point**, no integer types
+- **Variable names** must start with letter (C allows underscore)
+
+## Common Patterns for LLM Code Generation
+
+### Mathematical Expressions
+```
+# Quadratic formula
+(-b + sqrt(b^2 - 4*a*c)) / (2*a)
+
+# Distance between points
+sqrt((x2-x1)^2 + (y2-y1)^2)
+
+# Sigmoid function
+1 / (1 + exp(-x))
+
+# Smoothstep interpolation
+t^2 * (3 - 2*t)
+```
+
+### Conditional Logic
+```
+# Clamp to range
+x < min ? min : (x > max ? max : x)
+
+# Step function
+x >= threshold ? 1 : 0
+
+# Absolute value
+x < 0 ? -x : x
+
+# Sign function
+x > 0 ? 1 : (x < 0 ? -1 : 0)
+```
+
+### Complex Expressions
+```
+# Sine wave with frequency and phase
+amplitude * sin(frequency * t + phase)
+
+# Gaussian distribution
+exp(-(x-mean)^2 / (2*sigma^2)) / (sigma * sqrt(2*pi))
+
+# Lerp (linear interpolation)
+a * (1 - t) + b * t
+```
+
+## Error Conditions
+
+Expressions that will cause **parse errors**:
+- Mismatched parentheses: `sin(x`
+- Unknown operators: `a & b`
+- Invalid variable names: `2var`, `var-name`
+- Assignment attempts: `x = 5`
+
+Expressions that will cause **runtime errors** (return NaN):
+- Division by zero: `1/0`
+- Invalid math operations: `sqrt(-1)`, `log(0)`
+- Invalid factorial: `fac(-1)`
+- Invalid combinations: `ncr(2, 5)`
+
+## Best Practices for LLM Expression Generation
+
+1. **Always use parentheses** when operator precedence is unclear
+2. **Use `==` for equality**, never `=`
+3. **Remember `^` is exponentiation**, not bitwise XOR
+4. **Validate mathematical domains** (no negative square roots, etc.)
+5. **Use ternary operator** for conditional expressions instead of if-statements
+6. **Leverage built-in functions** rather than implementing from scratch
+7. **Use descriptive variable names** that start with letters
+8. **Consider floating-point precision** in comparisons
+
+## Example: Converting C-like Code to TinyExpr
+
+**Avoid (C-like):**
+```c
+if (x > 0) return 1; else return -1;
+int result = x & 0xFF;
+float y = (float)x;
+```
+
+**Use instead (TinyExpr):**
+```
+x > 0 ? 1 : -1
+# No bitwise operations available
+# No type casting needed (everything is double)
+```
+
+This syntax guide ensures that generated expressions will be compatible with TinyExpr's parser and evaluation engine.
